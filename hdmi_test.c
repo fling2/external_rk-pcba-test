@@ -89,6 +89,8 @@ static void hdmi_audio_test(char *filename)
 	flags |= (AUDIO_HW_OUT_PERIOD_MULT - 1) << PCM_PERIOD_SZ_SHIFT;
 	flags |= (AUDIO_HW_OUT_PERIOD_CNT - PCM_PERIOD_CNT_MIN)<< PCM_PERIOD_CNT_SHIFT;
 
+	flags |= PCM_CARD1;
+
 	inFlags |= flags;
 	outFlags |= flags;
 	
@@ -103,6 +105,7 @@ static void hdmi_audio_test(char *filename)
 	if (!pcm_ready(pcmOut)) {
 		pcm_close(pcmOut);
 		pcmOut = NULL;
+                fclose(fp);
 		return;
 	}
 
@@ -112,6 +115,7 @@ static void hdmi_audio_test(char *filename)
         LOG("Unable to allocate %d bytes\n", bufsize);
         free(buffer);
         pcm_close(pcmOut);
+        fclose(fp);
         return;
     }
 

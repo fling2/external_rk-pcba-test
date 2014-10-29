@@ -38,10 +38,15 @@
 #include "script_parser.h"
 #include "debug.h"
 #include "hdmi_test.h"
+#include "sim_test.h"
+#include "battery_test.h"
+#include "ddr_test.h"
 #include "spdif_test.h"
 #include "lan_test.h"
+#include "cpu_test.h"
 
 #include <signal.h>
+#include "language.h"
 
 #define SCRIPT_NAME                     "/res/test_config.cfg"
 #define ITEM_H				2			//height of test item
@@ -70,7 +75,7 @@ struct manual_item m_item[] = {
 	};
 
 
-int manual_p_y = 4;
+int manual_p_y = 1;
 
 
 int cur_p_y;		//current position for auto test tiem in y direction
@@ -80,6 +85,7 @@ char dt[30]={"20120927.143045"};
 struct rtc_msg *rtc_msg;
 int err_rtc;
 int rtc_p_y; //rtc position in y direction
+pthread_t battery_tid;  
 
 pthread_t screen_tid;  
 char *screen_res;
@@ -154,6 +160,13 @@ char *spdif_res;
 struct sd_msg *spdif_msg;
 int spdif_err = -1;
 
+pthread_t sim_tid;
+
+pthread_t ddr_tid;  
+int ddr_err = -1;
+
+pthread_t cpu_tid;
+int cpu_err = -1;
 
 static pthread_mutex_t gCur_p_y = PTHREAD_MUTEX_INITIALIZER;
 
@@ -228,6 +241,8 @@ static int parse_testcase()
 				printf("malloc for tc_info[%d] fail\n",j);
 				return -1;
 			}
+			tc_info->x = 0;
+			tc_info->y =0;
 			tc_info->base_info = &info[j];
 			if(tc_info->base_info->category)   
 				 list_add(&tc_info->list, &manual_test_list_head);
@@ -270,81 +285,7 @@ static int parse_testcase()
 }
 
 
-
-int init_manual_test_item(struct testcase_info *tc_info)
-{
-	printf("%s\n",tc_info->base_info->name);
-	if(!strcmp(tc_info->base_info->name, "Codec"))
-	{
-		tc_info->func = codec_test;
-	}
-	else if(!strcmp(tc_info->base_info->name, "Key"))
-	{
-		tc_info->func = key_test;
-	}
-	else if(!strcmp(tc_info->base_info->name, "Camera_1"))
-	{
-		tc_info->func = camera_test;
-		tc_info->dev_id = 1;
-	}
-	else
-	{
-		printf("unsupported test case:%s\n",tc_info->base_info->name);
-		return -1;
-	}
-
-	tc_info->x =  ITEM_X;
-	tc_info->y =  manual_p_y ;
-	tc_info->w =  gr_fb_width();
-	tc_info->h = ITEM_H;
-	ui_print_xy_rgba(tc_info->x,tc_info->y + (ITEM_H >> 1)-1,0,255,0,255,"%s\n",
-			tc_info->base_info->display_name);
-	manual_p_y += ITEM_H;
-	
-	return 0;
-}
-
-
-
-
-int start_manual_test_item(int x,int y)
-{
-	struct list_head *pos;
-	int x_start,x_end;
-	int y_start,y_end;
-	int err;
-	list_for_each(pos, &manual_test_list_head) 
-	{
-		struct testcase_info *tc_info = list_entry(pos, struct testcase_info, list);
-		x_start = (tc_info->x)*CHAR_WIDTH;
-		x_end = x_start + (tc_info->w)*CHAR_WIDTH;
-		y_start = (tc_info->y - 1)*CHAR_HEIGHT;
-		y_end = y_start + (tc_info->h)*CHAR_HEIGHT;
-		//printf("%s>>x_start:%d>>x_end:%d>>y_start:%d>>y_end:%d\n",
-		//	tc_info->base_info->name,x_start,x_end,y_start,y_end);
-		if( (x >= x_start) && (x <= x_end) && (y >= y_start) && (y <= y_end))
-		{
-			
-			ui_print_xy_rgba(tc_info->x,tc_info->y + (ITEM_H >> 1)-1,0,0,255,255,"%s\n",
-					tc_info->base_info->display_name);
-			//if (!strcmp(tc_info->base_info->name, "Camera_1"))
-			//{
-				stopCameraTest();
-			//}
-			
-			tc_info->func(tc_info);
-			
-			break;
-		}
-		
-	}
-	return 0;
-	
-}
-
-
-
-int start_auto_test_item(struct testcase_info *tc_info)
+int start_test_pthread(struct testcase_info *tc_info)
 {
 	int err;
 	printf("%s\n",tc_info->base_info->name);
@@ -368,9 +309,18 @@ int start_auto_test_item(struct testcase_info *tc_info)
 		   return -1;
 		   
 		}  
+	}else if(!strcmp(tc_info->base_info->name, "battery"))
+	{
+		err = pthread_create(&battery_tid, NULL, battery_test,tc_info); //
+		if(err != 0)
+		{  
+		   printf("create battery_test test thread error: %s/n",strerror(err));
+		   return -1;
+		   
+		}  
 	}else if(!strcmp(tc_info->base_info->name, "Codec"))
         {
-                err = pthread_create(&codec_tid, NULL, codec_test,NULL); //
+                err = pthread_create(&codec_tid, NULL, codec_test,tc_info); //
                 if(err != 0)
                 {
                    printf("create codec test thread error: %s/n",strerror(err));
@@ -387,7 +337,7 @@ int start_auto_test_item(struct testcase_info *tc_info)
 		   
 		}  
 	}
-	else if(!strcmp(tc_info->base_info->name, "Camera_0"))
+	else if(!strcmp(tc_info->base_info->name, "camera"))
 	{
 		tc_info->dev_id = 0;
 		err = pthread_create(&camera_tid, NULL, camera_test,tc_info); //
@@ -493,6 +443,33 @@ int start_auto_test_item(struct testcase_info *tc_info)
 		   
 		}  
 	}
+	else if(!strcmp(tc_info->base_info->name, "sim"))
+	{
+		err = pthread_create(&sim_tid, NULL, sim_test,tc_info); //
+		if(err != 0)
+		{  
+		   printf("create sim test thread error: %s/n",strerror(err));
+		   return -1;
+		   
+		}  
+	}	
+	else if(!strcmp(tc_info->base_info->name, "ddr"))
+	{
+		ddr_err = pthread_create(&ddr_tid, NULL, ddr_test,tc_info); //
+		if(ddr_err != 0)
+		{  
+		   printf("create ddr test thread error: %s/n",strerror(ddr_err));
+		   return -1;
+		   
+		}  
+	}
+	else if(!strcmp(tc_info->base_info->name, "cpu")){
+		cpu_err = pthread_create(&cpu_tid, NULL, cpu_test, tc_info);
+		if(cpu_err != 0){
+		   printf("create cpu test thread error: %s/n",strerror(cpu_err));
+		   return -1;
+		}
+	}
 	else
 	{
 		printf("unsupport test item:%s\n",tc_info->base_info->name);
@@ -502,6 +479,35 @@ int start_auto_test_item(struct testcase_info *tc_info)
 	return 0;
 			
 }
+
+int init_manual_test_item(struct testcase_info *tc_info)
+{
+	int err = 0;
+
+	manual_p_y += 1;
+	tc_info->y=manual_p_y;
+
+	start_test_pthread(tc_info);
+	
+	return 0;
+}
+
+
+
+
+int start_manual_test_item(int x,int y)
+{
+	return Camera_Click_Event(x,y); 
+}
+
+int start_auto_test_item(struct testcase_info *tc_info)
+{
+	printf("start_auto_test_item : %d, %s \r\n",tc_info->y,tc_info->base_info->name);
+	start_test_pthread(tc_info);
+	
+	return 0;
+}
+
 int ensure_path_mounted(const char* path) {return 0;}
 
 int 
@@ -653,10 +659,10 @@ int main(int argc, char **argv)
 	gui_loadResources();
 #if 1
 	w =  gr_fb_width() >> 1;
-	ui_print_xy_rgba(((w>>1)/CHAR_WIDTH-9),0,0,255,0,255,"Rockchip Pcba test v2.0\n");
+	ui_print_xy_rgba(((w>>1)/CHAR_WIDTH-9),0,0,255,0,255,"%s\n",PCBA_VERSION_NAME);
 //	ui_print_xy_rgba(0,1,255,0,0,255,"%s %s\n",__DATE__,__TIME__);
-	ui_print_xy_rgba(((w>>1)/CHAR_WIDTH-3),2,255,255,0,255," Manual\n");
-        drawline_4(255,255,0,255,0,(2*CHAR_HEIGHT-CHAR_HEIGHT/4),w,CHAR_HEIGHT,3);
+	ui_print_xy_rgba(((w>>1)/CHAR_WIDTH-3),1,255,255,0,255,"%s\n",PCBA_MANUAL_TEST);
+    drawline_4(255,255,0,255,0,(1*CHAR_HEIGHT-CHAR_HEIGHT/4),w,CHAR_HEIGHT,3);
 	cur_p_y = (gr_fb_height()/CHAR_HEIGHT) - 1;
 	INIT_LIST_HEAD(&manual_test_list_head);
 	INIT_LIST_HEAD(&auto_test_list_head);
@@ -689,7 +695,7 @@ int main(int argc, char **argv)
 		init_manual_test_item(tc_info);
 		
 	}
-	ui_print_xy_rgba(((w>>1)/CHAR_WIDTH-4),manual_p_y+1,255,255,0,255,"Automatic \n");
+	ui_print_xy_rgba(((w>>1)/CHAR_WIDTH-3),manual_p_y+1,255,255,0,255,"%s\n",PCBA_AUTO_TEST);
         drawline_4(255,255,0,255,0,(CHAR_HEIGHT*(manual_p_y+1)-CHAR_HEIGHT/4),w,CHAR_HEIGHT,3); 
 
 	printf("\n\nauto testcase:\n");
@@ -715,11 +721,11 @@ int main(int argc, char **argv)
 	}
 	finishCameraTest();
 
-	if(g_codec_pid > 0){
+	/*if(g_codec_pid > 0){
 		kill(g_codec_pid,SIGKILL);
 		printf("pcba-test-over\n");
 		sleep(3);
-	}
+	}*/
 
 	printf("pcba test over!\n");
 	return success;

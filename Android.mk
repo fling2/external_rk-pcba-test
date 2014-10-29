@@ -3,21 +3,23 @@ ifeq ($(TARGET_ARCH),arm)
 
 LOCAL_PATH := $(call my-dir)
 
+NO_CODEC_TEST_BIN=false
 ifneq ($(NO_CODEC_TEST_BIN), true)
 include $(CLEAR_VARS)
 LOCAL_MODULE := codec_test
 LOCAL_FORCE_STATIC_EXECUTABLE := true
 #LOCAL_MODULE_PATH:=$(TARGET_ROOT_OUT_SBIN)
-LOCAL_C_INCLUDES += bionic external/stlport/stlport
+LOCAL_C_INCLUDES += bionic external/stlport/stlport $(LOCAL_PATH)/Language
 
 LOCAL_SRC_FILES := \
     alsa_pcm.c     \
+    alsa_mixer.c   \
     codec_test.c   \
     codec_main.c
 
 
 LOCAL_MODULE_TAGS := eng
-LOCAL_STATIC_LIBRARIES := libc libcutils
+LOCAL_STATIC_LIBRARIES := libc libcutils liblog
 LOCAL_SHARED_LIBRARIES := 
 
 
@@ -35,7 +37,7 @@ TW_INTERNAL_STORAGE_MOUNT_POINT := "/mnt/sdcard"
 LOCAL_MODULE := pcba_core
 LOCAL_FORCE_STATIC_EXECUTABLE := true
 #LOCAL_MODULE_PATH:=$(TARGET_ROOT_OUT_SBIN)
-LOCAL_C_INCLUDES += bionic external/stlport/stlport
+LOCAL_C_INCLUDES += bionic external/stlport/stlport $(LOCAL_PATH)/Language
 
 LOCAL_SRC_FILES := \
     pre_test.c\
@@ -53,6 +55,7 @@ LOCAL_SRC_FILES := \
     camera_test.c		\
 	et_cc_linux_arm.c	\
     key_test.c			\
+    alsa_mixer.c		\
     alsa_pcm.c			\
     codec_test.c		\
     wlan_test.c			\
@@ -61,9 +64,13 @@ LOCAL_SRC_FILES := \
     sdcard_test.c		\
     udisk_test.c        \
     gsensor_test.c 		\
-    hdmi_test.c			\
+    hdmi_test.c       \
+    sim_test.c \
+    battery_test.c\
+    ddr_test.c \
     spdif_test.c		\
-    lan_test.c
+    lan_test.c			\
+    cpu_test.c
 
 RECOVERY_API_VERSION := 2
 LOCAL_CFLAGS += -DRECOVERY_API_VERSION=$(RECOVERY_API_VERSION)
@@ -174,10 +181,11 @@ ifeq ($(TARGET_RECOVERY_GUI),true)
 else
   LOCAL_SRC_FILES += gui_stub.c
 endif
+LOCAL_STATIC_LIBRARIES += libm
 LOCAL_STATIC_LIBRARIES += libminziptwrp libunz libmincrypt
 LOCAL_STATIC_LIBRARIES += libminuitwrp libpixelflinger_static libpng libjpegtwrp libbluetooth
 LOCAL_STATIC_LIBRARIES += libz libc libstlport_static libcutils libstdc++
-LOCAL_STATIC_LIBRARIES += libmtdutils 
+LOCAL_STATIC_LIBRARIES += libmtdutils liblog
 
 
 

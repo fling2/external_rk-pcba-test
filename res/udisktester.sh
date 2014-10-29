@@ -3,6 +3,7 @@
 #RESULT_FILE="/data/udisk_capacity.txt"
 #LOG_FILE="/data/udisk.log"
 #source send_cmd_pipe.sh
+cflag=0
 
 #while true; do
     for nr in a b c d e f g h i j k l m n o p q r s t u v w x y z; do
@@ -10,6 +11,7 @@
         udiskp=$udisk"1"
         part=$udisk
     
+    	cflag=0
         #echo "searching disk ..." >> LOG_FILE
         while true; do
             while true; do
@@ -34,7 +36,9 @@
                 busybox mount -t vfat $udiskp /tmp/udisk
                 if [ $? -ne 0 ]; then
                     echo "udisk mount failed" >> LOG_FILE
-                    exit 1
+                    #exit 1
+		    cflag=1;
+		    break;
                     #SEND_CMD_PIPE_FAIL $3
                     #busybox sleep 3
                     # goto for nr in ...
@@ -47,6 +51,9 @@
     
             break
         done
+	if [ $cflag = "1" ]; then
+            continue
+        fi
     
         capacity=`busybox df | busybox grep /tmp/udisk | busybox awk '{printf $2}'`
         #echo "$part: $capacity" >> LOG_FILE

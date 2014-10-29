@@ -4,10 +4,12 @@ TARGET_PRODUCT=$1
 PRODUCT_OUT=$2
 TARGET_BOARD_PLATFORM=$3
 TARGET_COMMON=common
-if [ $TARGET_BOARD_PLATFORM = "rk30xx" ] || [ $TARGET_BOARD_PLATFORM = "rk30xxb" ] || [ $TARGET_BOARD_PLATFORM = "rk3188" ] || [ $TARGET_BOARD_PLATFORM = "rk3028" ]; then
-    MODULE="modules_smp"
-elif [ $TARGET_BOARD_PLATFORM = "rk2928" ]; then
+PCBA_PATH=external/rk-pcba-test
+BT_BLUEDROID=true
+if [ $TARGET_BOARD_PLATFORM = "rk2928" ]; then
     MODULE="modules"
+else
+    MODULE="modules_smp"
 fi
 echo MODULE $MODULE
 if [ ! -e "device/rockchip/$TARGET_COMMON/app" ] ; then
@@ -141,12 +143,12 @@ if [ ! -e "device/rockchip/$TARGET_COMMON/app" ] ; then
     fi
     
     if [ -e "device/rockchip/$TARGET_PRODUCT/bluetooth/realtek/bt/firmware/rtl8723au" ] ; then
-    cp device/rockchip/$TARGET_PRODUCT/bluetooth/realtek/bt/firmware/rtl8723au/rtk8723* $PRODUCT_OUT/recovery/root/system/etc/firmware
+    cp device/rockchip/$TARGET_PRODUCT/bluetooth/realtek/bt/firmware/rtl8723au/rtk8723* $PRODUCT_OUT/recovery/root/etc/firmware
     fi
 
     if [ -e "device/rockchip/$TARGET_PRODUCT/bluetooth/realtek/bt/firmware/rtl8723as" ] ; then
-    cp device/rockchip/$TARGET_PRODUCT/bluetooth/realtek/bt/firmware/rtl8723as/rtl8723a_fw $PRODUCT_OUT/recovery/root/system/etc/firmware/rtlbt/rtlbt_fw
-    cp device/rockchip/$TARGET_PRODUCT/bluetooth/realtek/bt/firmware/rtl8723as/rtl8723a_config $PRODUCT_OUT/recovery/root/system/etc/firmware/rtlbt/rtlbt_config
+    cp device/rockchip/$TARGET_PRODUCT/bluetooth/realtek/bt/firmware/rtl8723as/rtl8723a_fw $PRODUCT_OUT/recovery/root/etc/firmware/rtlbt/rtlbt_fw
+    cp device/rockchip/$TARGET_PRODUCT/bluetooth/realtek/bt/firmware/rtl8723as/rtl8723a_config $PRODUCT_OUT/recovery/root/etc/firmware/rtlbt/rtlbt_config
     fi
 
 else
@@ -223,6 +225,9 @@ else
     cp device/rockchip/$TARGET_COMMON/wifi/lib/$MODULE/wlan.ko.3.0.36+ $PRODUCT_OUT/recovery/root/res/
     fi
 
+    if [ ! -e "$PRODUCT_OUT/recovery/root/system/" ] ; then
+    mkdir $PRODUCT_OUT/recovery/root/system/
+    fi
     if [ ! -e "$PRODUCT_OUT/recovery/root/system/lib/" ] ; then
     mkdir $PRODUCT_OUT/recovery/root/system/lib/
     mkdir $PRODUCT_OUT/recovery/root/system/lib/modules/
@@ -265,6 +270,10 @@ else
     cp external/wlan_loader/firmware/WIFI_RAM_CODE $PRODUCT_OUT/recovery/root/etc/firmware/WIFI_RAM_CODE
     fi
 
+    if [ -e "hardware/mediatek/wlan/mt5931_6622/firmware/WIFI_RAM_CODE_MT5931" ] ; then
+    cp hardware/mediatek/wlan/mt5931_6622/firmware/WIFI_RAM_CODE_MT5931 $PRODUCT_OUT/recovery/root/etc/firmware/WIFI_RAM_CODE_MT5931
+    fi
+
     if [ -e "device/rockchip/$TARGET_COMMON/ipp/lib/rk29-ipp.ko" ] ; then
     cp device/rockchip/$TARGET_COMMON/ipp/lib/rk29-ipp.ko $PRODUCT_OUT/recovery/root/
     fi
@@ -280,12 +289,86 @@ else
     if [ -e "device/rockchip/common/bluetooth/pcba/system/etc" ] ; then
     cp device/rockchip/common/bluetooth/pcba/system/etc/ $PRODUCT_OUT/recovery/root/system/ -a
     fi
+
     if [ -e "device/rockchip/common/bluetooth/realtek/bt/firmware/rtl8723au" ] ; then
-    cp device/rockchip/common/bluetooth/realtek/bt/firmware/rtl8723au/rtk8723* $PRODUCT_OUT/recovery/root/system/etc/firmware
+    cp device/rockchip/common/bluetooth/realtek/bt/firmware/rtl8723au/* $PRODUCT_OUT/recovery/root/etc/firmware
     fi
 
-    if [ -e "device/rockchip/common/bluetooth/realtek/bt/firmware/rtl8723as" ] ; then
-    cp device/rockchip/common/bluetooth/realtek/bt/firmware/rtl8723as/rtl8723a_fw $PRODUCT_OUT/recovery/root/system/etc/firmware/rtlbt/rtlbt_fw
-    cp device/rockchip/common/bluetooth/realtek/bt/firmware/rtl8723as/rtl8723a_config $PRODUCT_OUT/recovery/root/system/etc/firmware/rtlbt/rtlbt_config
+    if [ -e "device/rockchip/common/bluetooth/realtek/bt/firmware/rtl8723bs" ] ; then
+    cp device/rockchip/common/bluetooth/realtek/bt/firmware/rtl8723bs/rtl8723b_fw $PRODUCT_OUT/recovery/root/etc/firmware/rtlbt/rtlbt_fw
+    cp $PRODUCT_OUT/system/etc/firmware/rtlbt/rtlbt_config $PRODUCT_OUT/recovery/root/etc/firmware/rtlbt/rtlbt_config
+    #cp device/rockchip/common/bluetooth/realtek/bt/firmware/rtl8723bs/rtl8723b_config $PRODUCT_OUT/recovery/root/etc/firmware/rtlbt/rtlbt_config
     fi
+    
+    if [ -e "device/rockchip/common/bluetooth/realtek/bt/firmware/rtl8723as" ] ; then
+    cp device/rockchip/common/bluetooth/realtek/bt/firmware/rtl8723as/rtl8723a_fw $PRODUCT_OUT/recovery/root/etc/firmware/rtlbt/rtlbt_fw
+    cp device/rockchip/common/bluetooth/realtek/bt/firmware/rtl8723as/rtl8723a_config $PRODUCT_OUT/recovery/root/etc/firmware/rtlbt/rtlbt_config
+    fi
+
+    ############################################### bin/lib ##################################################
+    
+    cp -rf $PCBA_PATH/sbin/* $PRODUCT_OUT/recovery/root/system/bin/
+
+    if [ -e "$PRODUCT_OUT/obj/lib/libc.so" ] ; then
+    cp $PRODUCT_OUT/obj/lib/libc.so $PRODUCT_OUT/recovery/root/system/lib/
+    fi
+    if [ -e "$PRODUCT_OUT/obj/lib/libcutils.so" ] ; then
+    cp $PRODUCT_OUT/obj/lib/libcutils.so $PRODUCT_OUT/recovery/root/system/lib/
+    fi
+    if [ -e "$PRODUCT_OUT/obj/lib/liblog.so" ] ; then
+    cp $PRODUCT_OUT/obj/lib/liblog.so $PRODUCT_OUT/recovery/root/system/lib/
+    fi
+    if [ -e "$PRODUCT_OUT/obj/lib/libm.so" ] ; then
+    cp $PRODUCT_OUT/obj/lib/libm.so $PRODUCT_OUT/recovery/root/system/lib/
+    fi
+    if [ -e "$PRODUCT_OUT/obj/lib/libstdc++.so" ] ; then
+    cp $PRODUCT_OUT/obj/lib/libstdc++.so $PRODUCT_OUT/recovery/root/system/lib/
+    fi
+if [ $BT_BLUEDROID = "true" ] ; then
+    if [ -e "$PRODUCT_OUT/obj/lib/bluetooth.default.so" ] ; then
+    cp $PRODUCT_OUT/obj/lib/bluetooth.default.so $PRODUCT_OUT/recovery/root/system/lib/
+    fi
+    if [ -e "$PRODUCT_OUT/obj/lib/libbluetooth_mtk.so" ] ; then
+    cp $PRODUCT_OUT/obj/lib/libbluetooth_mtk.so $PRODUCT_OUT/recovery/root/system/lib/
+    fi
+    if [ -e "$PRODUCT_OUT/obj/lib/libbt-hci.so" ] ; then
+    cp $PRODUCT_OUT/obj/lib/libbt-hci.so $PRODUCT_OUT/recovery/root/system/lib/
+    fi
+    if [ -e "$PRODUCT_OUT/obj/lib/libbt-utils.so" ] ; then
+    cp $PRODUCT_OUT/obj/lib/libbt-utils.so $PRODUCT_OUT/recovery/root/system/lib/
+    fi
+    if [ -e "$PRODUCT_OUT/obj/vendor/lib/libbt-vendor.so" ] ; then
+    cp $PRODUCT_OUT/obj/vendor/lib/libbt-vendor.so $PRODUCT_OUT/recovery/root/system/lib/
+    fi
+    if [ -e "$PRODUCT_OUT/obj/lib/libbt-vendor.so" ] ; then
+    cp $PRODUCT_OUT/obj/lib/libbt-vendor.so $PRODUCT_OUT/recovery/root/system/lib/
+    fi
+    if [ -e "$PRODUCT_OUT/obj/lib/libcorkscrew.so" ] ; then
+    cp $PRODUCT_OUT/obj/lib/libcorkscrew.so $PRODUCT_OUT/recovery/root/system/lib/
+    fi
+    if [ -e "$PRODUCT_OUT/obj/lib/libgccdemangle.so" ] ; then
+    cp $PRODUCT_OUT/obj/lib/libgccdemangle.so $PRODUCT_OUT/recovery/root/system/lib/
+    fi
+    if [ -e "$PRODUCT_OUT/obj/lib/libhardware_legacy.so" ] ; then
+    cp $PRODUCT_OUT/obj/lib/libhardware_legacy.so $PRODUCT_OUT/recovery/root/system/lib/
+    fi
+    if [ -e "$PRODUCT_OUT/obj/lib/libhardware.so" ] ; then
+    cp $PRODUCT_OUT/obj/lib/libhardware.so $PRODUCT_OUT/recovery/root/system/lib/
+    fi
+    if [ -e "$PRODUCT_OUT/obj/lib/libnetutils.so" ] ; then
+    cp $PRODUCT_OUT/obj/lib/libnetutils.so $PRODUCT_OUT/recovery/root/system/lib/
+    fi
+    if [ -e "$PRODUCT_OUT/obj/lib/libpower.so" ] ; then
+    cp $PRODUCT_OUT/obj/lib/libpower.so $PRODUCT_OUT/recovery/root/system/lib/
+    fi
+    if [ -e "$PRODUCT_OUT/obj/lib/libutils.so" ] ; then
+    cp $PRODUCT_OUT/obj/lib/libutils.so $PRODUCT_OUT/recovery/root/system/lib/
+    fi
+    if [ -e "$PRODUCT_OUT/obj/lib/libwpa_client.so" ] ; then
+    cp $PRODUCT_OUT/obj/lib/libwpa_client.so $PRODUCT_OUT/recovery/root/system/lib/
+    fi
+    if [ -e "$PRODUCT_OUT/obj/lib/libz.so" ] ; then
+    cp $PRODUCT_OUT/obj/lib/libz.so $PRODUCT_OUT/recovery/root/system/lib/
+    fi
+fi
 fi

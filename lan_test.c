@@ -33,6 +33,7 @@
 #include "lan_test.h"
 #include "test_case.h"
 #include "script.h"
+#include "language.h"
 
 
 #define LOG(x...) printf(x)
@@ -151,6 +152,11 @@ void* lan_test(void* argv)
 	FILE *fp = NULL;
 	char *results = NULL;
 	struct testcase_info *tc_info = (struct testcase_info *)argv;
+	/*remind ddr test*/
+	if(tc_info->y <= 0)
+		tc_info->y  = get_cur_print_y();	
+
+	ui_print_xy_rgba(0,tc_info->y,255,255,0,255,"%s:[%s..] \n",PCBA_LAN,PCBA_TESTING);
 
 	char local_addr[32], ping_addr[32];
 	int use_ping;
@@ -196,9 +202,9 @@ void* lan_test(void* argv)
 		result = process_view_localAddr(results);
 	}
 	if(result)
-		ui_print_xy_rgba(0,get_cur_print_y(),0,255,0,255,"Ether : [OK]\n");
+	    ui_print_xy_rgba(0,tc_info->y,0,255,0,255,"%s:[%s]\n",PCBA_LAN,PCBA_SECCESS);
 	else
-		ui_print_xy_rgba(0,get_cur_print_y(),255,0,0,255,"Ether : [FAIL]\n");
+		ui_print_xy_rgba(0,tc_info->y,255,0,0,255,"%s:[%s]\n",PCBA_LAN,PCBA_FAILED);
 	if(fp != NULL) {
 		fclose(fp);
 	}
@@ -219,7 +225,7 @@ error_exit:
 		free(results);
 	}
 	
-	ui_print_xy_rgba(0,get_cur_print_y(),255,0,0,255,"Ether : [FAIL]\n");
+	ui_print_xy_rgba(0,tc_info->y,255,0,0,255,"%s:[%s]\n",PCBA_LAN,PCBA_FAILED);
 	tc_info->result = -1;
 		
   return argv;

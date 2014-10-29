@@ -47,6 +47,7 @@ char *mCamDriverV4l2Buffer[16];
 unsigned int mCamDriverV4l2BufferLen;
 struct pmem_region sub;
 
+pthread_t camera_tid;
 typedef char bool;
 
 #define true 1
@@ -91,7 +92,8 @@ int Camera_Click_Event(int x,int y)
 		
 		printf("Camera_Click_Event : change \r\n");	
 		stopCameraTest();
-		startCameraTest();
+		usleep(100000);
+		pthread_create(&camera_tid, NULL, startCameraTest, NULL); 
 	}
 		
 	return 0;

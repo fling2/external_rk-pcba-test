@@ -8,6 +8,7 @@
 #include "common.h"
 #include "key_test.h"
 #include "test_case.h"
+#include "language.h"
 #define test_bit(bit, array)    (array[bit/8] & (1<<(bit%8)))
 
 uint8_t keyBitmask[(KEY_MAX + 1) / 8];
@@ -17,7 +18,7 @@ unsigned int gKey = 0;
 static pthread_mutex_t gKeyMutex = PTHREAD_MUTEX_INITIALIZER;
 
 int g_key_test = 0;
-struct testcase_info  *tc_info = NULL;
+static struct testcase_info  *tc_info = NULL;
 extern int manual_p_y;
 
 int set_gKey(unsigned int code)
@@ -30,7 +31,7 @@ int set_gKey(unsigned int code)
 		{
 //			ui_print_xy_rgba(tc_info->x,tc_info->y + 1,0,0,255,255,"    [ %s ]\n",key_code[i].name);
 //                        ui_print_xy_rgba(tc_info->x,tc_info->y + 1,0,255,0,255,"%s\n",key_code[i].name);
-                        ui_print_xy_rgba(0,manual_p_y,0,255,0,255,"Key : {%s}\n",key_code[i].name);
+                        ui_print_xy_rgba(0,tc_info->y,0,255,0,255,"%s:[%s]\n",PCBA_KEY,key_code[i].name);
 			break;
 		}
 	}
@@ -123,7 +124,6 @@ int scan_key_code()
 									 key_code[key_cnt].name = "OK";
 									 break;
 								default:
-									 key_code[key_cnt].name = "UNSUPPORT";
 									 printf("un supported key:%d\n",i);
 									 break;
 									 
@@ -150,10 +150,13 @@ void* key_test(void *argc)
 	int i = 0;
 	int code;
 	int run = 1;
-	printf("start key test\n");
+	//printf("start key test\n");
 	tc_info  = (struct testcase_info *)argc;
-	//Auto test item, but show in Manual test page.
-    ui_print_xy_rgba(0,manual_p_y,0,255,0,255,"Key\n");
+
+	if(tc_info->y <= 0)
+		tc_info->y  = get_cur_print_y();	
+
+        ui_print_xy_rgba(0,tc_info->y,255,255,0,255,"%s \n",PCBA_KEY);
 	key_code_probe();
 	g_key_test = 1;
 	
